@@ -1,0 +1,125 @@
+{% extends 'layout.html'%}
+
+{% block body %}
+
+  <div class="row">
+    <!-- Chart Section Begin -->
+    <div class="col s12 m12 l12">
+        <p class="z-depth-5">
+          <div class="container-fluid" id="data-container"></div>
+          <div id="TemperatureChart"></div>
+        </p>
+    </div>
+    <!-- Chart Section End -->
+  </div>
+
+{% endblock %}
+
+
+{% block script %}
+
+  var chartTempValue;
+  var chartHumiValue;
+  function listenChart() {
+    var source = new EventSource("/streamTemperatureChart/");
+
+    source.onmessage = function(msg) {
+        var point = JSON.parse(msg["data"]);
+        chartTempValue = point[1];
+        chartHumiValue = point[2];
+
+        var series = chart.series[0], shift = series.data.length > 20; // shift if the series is // longer than 20
+
+        // add the point
+        var newPoint1 = [point[0],point[1]];
+        var newPoint2 = [point[0],point[2]];
+
+        chart.series[0].addPoint(newPoint1, true, shift);
+        chart.series[1].addPoint(newPoint2, true, shift);
+    }
+}
+
+
+chart = new Highcharts.Chart({
+  chart: {
+      //marginRight: 100,
+      height: 625,
+      renderTo: 'data-container',
+      defaultSeriesType: 'spline',
+      shadow: true,
+      events: {
+          load: listenChart
+      }
+  },
+  time: {
+      useUTC: false
+  },
+  title: {
+      text: 'Live Temperature & Humidity Data',
+      align: 'left'
+  },
+  subtitle: {
+      text: 'Power by Highcharts',
+      align: 'left'
+  },
+  xAxis: {
+      type: 'datetime',
+      tickPixelInterval: 150,
+      maxZoom: 20 * 1000
+  },
+  yAxis: [{ // Primary yAxis
+      labels: {
+          format: '{value}',
+          style: {
+              color: '#808080' //Highcharts.getOptions().colors[3]
+          }
+      },
+      title: {
+          text: 'Temperature / ℃',
+          style: {
+              color: Highcharts.getOptions().colors[0]
+          }
+      },
+      opposite: false
+
+  }, { // Secondary yAxis
+      gridLineWidth: 0,
+      labels: {
+        format: '{value}',
+        style: {
+            color: Highcharts.getOptions().colors[1]
+        }
+    },
+      title: {
+          text: 'Humidity / %rh',
+          style: {
+              color: Highcharts.getOptions().colors[1]
+          }
+      },
+      opposite: false,
+  }],
+  legend: {
+      layout: 'vertical',
+      align: 'left',
+      x: 80,
+      verticalAlign: 'top',
+      y: 55,
+      floating: true,
+      backgroundColor: (Highcharts.theme && Highcharts.theme.legendBackgroundColor) || 'rgba(255,255,255,0.25)'
+  },
+  series: [{
+      name: 'Temperature Value',
+      tooltip: {
+          valueSuffix: ' °C'
+      },
+      data: chartTempValue
+      },
+      {
+      name: 'Humidity Value',
+      tooltip: {
+      valueSuffix: ' %rh'
+      },
+      data: chartHumiValue
+  }],
+});
+{% endblock %}
